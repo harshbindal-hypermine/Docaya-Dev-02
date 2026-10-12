@@ -1,0 +1,98 @@
+Commands for Azure Owner
+========================
+
+Purpose:
+Register required Azure resource providers and grant Harsh permission to complete the Docaya full Azure deployment.
+
+Run these commands in PowerShell with an Azure account that has subscription Owner permission.
+
+
+1. Login and set variables
+--------------------------
+
+az login
+
+$sub = "5f45e10c-751a-406e-8ca9-bfb25ed43bf4"
+$rg = "rg-hmai-hm-gen-hm04"
+$harshObjectId = "1dc64d99-67ee-435c-8d40-326ff84acf7d"
+
+az account set --subscription $sub
+
+
+2. Register required Azure providers
+------------------------------------
+
+$providers = @(
+  "Microsoft.Web",
+  "Microsoft.App",
+  "Microsoft.ContainerRegistry",
+  "Microsoft.Sql",
+  "Microsoft.ServiceBus",
+  "Microsoft.Search",
+  "Microsoft.Insights",
+  "Microsoft.OperationalInsights",
+  "Microsoft.ManagedIdentity",
+  "Microsoft.Storage",
+  "Microsoft.Authorization"
+)
+
+foreach ($provider in $providers) {
+  az provider register --subscription $sub --namespace $provider --wait
+}
+
+
+3. Confirm provider registration
+--------------------------------
+
+foreach ($provider in $providers) {
+  az provider show `
+    --subscription $sub `
+    --namespace $provider `
+    --query "{namespace:namespace,state:registrationState}" `
+    -o table
+}
+
+Expected result: every provider should show Registered.
+
+
+4. Grant Harsh access
+---------------------
+
+Recommended option: grant Owner on the resource group so role assignments and all infrastructure deployment steps can complete.
+
+az role assignment create `
+  --assignee-object-id $harshObjectId `
+  --assignee-principal-type User `
+  --role Owner `
+  --scope "/subscriptions/$sub/resourceGroups/$rg"
+
+Alternative option: if Owner is not approved, grant both Contributor and User Access Administrator.
+
+az role assignment create `
+  --assignee-object-id $harshObjectId `
+  --assignee-principal-type User `
+  --role Contributor `
+  --scope "/subscriptions/$sub/resourceGroups/$rg"
+
+az role assignment create `
+  --assignee-object-id $harshObjectId `
+  --assignee-principal-type User `
+  --role "User Access Administrator" `
+  --scope "/subscriptions/$sub/resourceGroups/$rg"
+
+
+5. Verify access
+----------------
+
+az role assignment list `
+  --assignee $harshObjectId `
+  --scope "/subscriptions/$sub/resourceGroups/$rg" `
+  --query "[].{role:roleDefinitionName,scope:scope}" `
+  -o table
+
+
+After completing this
+---------------------
+Please confirm that:
+1. All providers show Registered.
+2. Harsh has Owner, or both Contributor and User Access Administrator, on rg-hmai-hm-gen-hm04.
