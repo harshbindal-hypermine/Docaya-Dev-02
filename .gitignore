@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------------
+# Node / web  -  src/web, src/contracts
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.vite/
+.tmp/
+.cache/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# .NET  -  src/api, src/functions
+# ---------------------------------------------------------------------------
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+TestResults/
+*.trx
+*.coverage
+
+# Azure Functions local host state - never committed (TAD 17.6).
+local.settings.json
+.azurite/
+__azurite_db*.json
+__blobstorage__/
+__queuestorage__/
+
+# ---------------------------------------------------------------------------
+# Secrets and environment  -  nothing real is ever committed (TAD 17.4/17.6).
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+secrets.json
+
+# ---------------------------------------------------------------------------
+# Local data and uploads  -  synthetic only, never tracked.
+# ---------------------------------------------------------------------------
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+data/*
+!data/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# ---------------------------------------------------------------------------
+# Infrastructure  -  compiled ARM output and real parameter files.
+# ---------------------------------------------------------------------------
+infra/**/*.generated.json
+infra/environments/*.local.json
+.azure/evidence/*.json
+.azure/evidence/*.txt
+.copilot-azure/
+
+# ---------------------------------------------------------------------------
+# Generated clients  -  produced from src/contracts, never hand-edited (TAD 17.3).
+# ---------------------------------------------------------------------------
+src/web/src/api/generated/
+src/api/Generated/
+
+# ---------------------------------------------------------------------------
+# OS noise
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+

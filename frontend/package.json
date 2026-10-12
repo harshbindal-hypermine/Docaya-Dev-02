@@ -1,0 +1,59 @@
+{
+    "name":  "docaya-prototype",
+    "private":  true,
+    "version":  "2.0.0",
+    "type":  "module",
+    "engines":  {
+                    "node":  "\u003e=22.13.0 \u003c27",
+                    "npm":  "\u003e=10 \u003c12"
+                },
+    "scripts":  {
+                    "dev":  "vite",
+                    "start":  "vite --host localhost --port 5173",
+                    "build":  "tsc -b \u0026\u0026 vite build",
+                    "preview":  "vite preview",
+                    "typecheck":  "tsc -b --pretty false",
+                    "lint":  "eslint . --max-warnings=0",
+                    "format":  "prettier --write .",
+                    "format:check":  "prettier --check .",
+                    "test":  "npm run test:unit \u0026\u0026 npm run test:integration",
+                    "test:unit":  "vitest run tests/unit --coverage",
+                    "test:integration":  "vitest run tests/integration",
+                    "test:e2e":  "playwright test --config playwright.prototype.config.ts",
+                    "test:a11y":  "playwright test --config playwright.prototype.config.ts --grep accessible",
+                    "test:legacy:e2e":  "playwright test tests/e2e",
+                    "test:load":  "k6 run tests/load/documents.js",
+                    "security:audit":  "npm audit --omit=dev --audit-level=high",
+                    "openapi:validate":  "node scripts/validate-openapi.mjs",
+                    "infra:build":  "az bicep build --file infra/main.bicep --stdout \u003e NUL"
+                },
+    "dependencies":  {
+                         "@fontsource-variable/inter":  "5.3.0",
+                         "@fontsource-variable/noto-sans-arabic":  "5.3.0",
+                         "lucide-react":  "0.544.0",
+                         "react":  "18.3.1",
+                         "react-dom":  "18.3.1"
+                     },
+    "devDependencies":  {
+                            "@axe-core/playwright":  "4.10.2",
+                            "@eslint/js":  "9.36.0",
+                            "@playwright/test":  "1.55.0",
+                            "@testing-library/jest-dom":  "6.8.0",
+                            "@testing-library/react":  "16.3.0",
+                            "@types/node":  "24.3.1",
+                            "@types/react":  "18.3.24",
+                            "@types/react-dom":  "18.3.7",
+                            "@vitejs/plugin-react":  "4.7.0",
+                            "@vitest/coverage-v8":  "3.2.4",
+                            "eslint":  "9.36.0",
+                            "eslint-plugin-react-hooks":  "5.2.0",
+                            "eslint-plugin-react-refresh":  "0.4.20",
+                            "globals":  "16.3.0",
+                            "jsdom":  "26.1.0",
+                            "prettier":  "3.6.2",
+                            "typescript":  "5.9.2",
+                            "typescript-eslint":  "8.42.0",
+                            "vite":  "6.4.1",
+                            "vitest":  "3.2.4"
+                        }
+}

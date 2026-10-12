@@ -1,0 +1,15 @@
+{
+  "name": "docaya-full-stack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Docaya full-stack application with the selected React frontend and backend services.",
+  "scripts": {
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "backend:api": "dotnet run --project backend/api/Docaya.Api/Docaya.Api.csproj",
+    "backend:functions:build": "dotnet build backend/functions/Docaya.Functions.sln",
+    "backend:build": "dotnet build backend/api/Docaya.Api.sln",
+    "build": "npm run frontend:build && npm run backend:build && npm run backend:functions:build"
+  }
+}

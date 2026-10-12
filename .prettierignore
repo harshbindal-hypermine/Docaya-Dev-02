@@ -1,0 +1,19 @@
+﻿node_modules
+dist
+coverage
+playwright-report
+test-results
+package-lock.json
+
+# .NET build output
+**/bin
+**/obj
+
+# Generated clients - produced from src/contracts, never hand-edited (TAD 17.3).
+src/web/src/api/generated
+src/api/Generated
+
+# Binary and source documents
+docs/sol doc
+docs/images
+src/web/public/brand

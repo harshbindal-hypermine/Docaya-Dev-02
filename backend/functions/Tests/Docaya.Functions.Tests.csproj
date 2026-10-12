@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Docaya.Functions.Tests - orchestration replay safety, idempotency and consumer tests.
+
+    Technical Architecture Document v1.3, Section 17.7:
+      "Idempotency and replay safety are reviewed explicitly; a generated orchestration
+       is never merged without a replay test."
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Docaya.Functions.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Docaya.Functions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

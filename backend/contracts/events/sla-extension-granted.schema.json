@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/sla-extension-granted.schema.json",
+  "title": "SlaExtensionGranted",
+  "description": "Raised when an authorised extension is recorded. Only Assurance or Authoriser may extend and a reason is mandatory. The original target is never overwritten. Consumers: notification, analytics, audit. Delivery: at-least-once.",
+  "type": "object",
+  "required": [
+    "documentId",
+    "approvalRequestId",
+    "grantedByPrincipalId",
+    "originalTargetDate",
+    "newTargetDate",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "documentId": { "type": "string", "format": "uuid" },
+    "approvalRequestId": { "type": "string", "format": "uuid" },
+    "grantedByPrincipalId": { "type": "string", "format": "uuid" },
+    "grantedByRole": { "type": "string", "enum": ["Assurance", "Authoriser"] },
+    "originalTargetDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Persisted alongside the new target for reporting."
+    },
+    "newTargetDate": { "type": "string", "format": "date" },
+    "reason": { "type": "string", "minLength": 1 }
+  }
+}

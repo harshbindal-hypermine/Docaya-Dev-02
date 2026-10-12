@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Docaya.Api - HTTP host, middleware pipeline, OpenAPI surface, response shaping,
+    correlation and the safe error envelope.
+
+    Technical Architecture Document v1.3, Section 17.2:
+      May reference:        Docaya.Application and Docaya.Infrastructure.
+      Must never contain:   business rules - it composes and exposes, it does not decide.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Docaya.Api</RootNamespace>
+    <UserSecretsId>docaya-api-v1</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Docaya.Application\Docaya.Application.csproj" />
+    <ProjectReference Include="..\Docaya.Infrastructure\Docaya.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Authentication: Entra-issued bearer validation (TAD 6.2). -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Observability: structured logging and W3C trace correlation (TAD 28.1). -->
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,48 @@
+{
+  "version": "2.0",
+
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request;Exception"
+      }
+    },
+    "logLevel": {
+      "default": "Information",
+      "Host.Results": "Information",
+      "Function": "Information"
+    }
+  },
+
+  "extensions": {
+    "durableTask": {
+      "hubName": "DocayaTaskHub",
+      "//": "Orchestration state is held by Durable Functions; a worker restart resumes rather than replays committed effects (TAD 8.5).",
+      "maxConcurrentActivityFunctions": 10,
+      "maxConcurrentOrchestratorFunctions": 10
+    },
+
+    "serviceBus": {
+      "//": "At-least-once delivery with idempotent consumers. Ordering for one document is preserved by session enablement on the document identifier (TAD 24.4).",
+      "prefetchCount": 0,
+      "messageHandlerOptions": {
+        "autoComplete": false,
+        "maxConcurrentCalls": 8,
+        "maxAutoRenewDuration": "00:05:00"
+      },
+      "sessionHandlerOptions": {
+        "autoComplete": false,
+        "maxConcurrentSessions": 8
+      }
+    }
+  },
+
+  "retry": {
+    "//": "Exponential backoff with a bounded attempt count, then dead-letter (TAD 24.4).",
+    "strategy": "exponentialBackoff",
+    "maxRetryCount": 5,
+    "minimumInterval": "00:00:02",
+    "maximumInterval": "00:05:00"
+  }
+}

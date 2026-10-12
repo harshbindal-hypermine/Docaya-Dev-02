@@ -1,0 +1,73 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ---------------------------------------------------------------------------
+# .NET  -  src/api and src/functions
+# Technical Architecture Document v1.3, Section 17.4 - Naming and standards.
+# ---------------------------------------------------------------------------
+
+[*.{cs,csx}]
+indent_size = 4
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_prefer_braces = true:warning
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+dotnet_style_readonly_field = true:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+
+# Naming: interfaces are IPascalCase, types are PascalCase.
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface_symbol
+dotnet_naming_rule.interfaces_start_with_i.style = prefix_i_pascal
+dotnet_naming_symbols.interface_symbol.applicable_kinds = interface
+dotnet_naming_style.prefix_i_pascal.required_prefix = I
+dotnet_naming_style.prefix_i_pascal.capitalization = pascal_case
+
+dotnet_naming_rule.types_are_pascal_case.severity = warning
+dotnet_naming_rule.types_are_pascal_case.symbols = type_symbol
+dotnet_naming_rule.types_are_pascal_case.style = pascal
+dotnet_naming_symbols.type_symbol.applicable_kinds = class,struct,enum,delegate
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+# Async methods end in Async so orchestration code reads unambiguously.
+dotnet_naming_rule.async_methods_end_in_async.severity = warning
+dotnet_naming_rule.async_methods_end_in_async.symbols = async_method_symbol
+dotnet_naming_rule.async_methods_end_in_async.style = suffix_async
+dotnet_naming_symbols.async_method_symbol.applicable_kinds = method
+dotnet_naming_symbols.async_method_symbol.required_modifiers = async
+dotnet_naming_style.suffix_async.required_suffix = Async
+dotnet_naming_style.suffix_async.capitalization = pascal_case
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+[*.bicep]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.sql]
+indent_size = 4
+
+# Windows scripts keep CRLF so they run as written on Windows.
+[*.{cmd,bat}]
+end_of_line = crlf
+
+[*.ps1]
+end_of_line = crlf
+indent_size = 4
+

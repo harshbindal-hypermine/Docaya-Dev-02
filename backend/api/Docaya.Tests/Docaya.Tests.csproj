@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Docaya.Tests - unit tests beside the code, plus the architecture tests that
+    enforce the dependency rule.
+
+    Technical Architecture Document v1.3, Section 17.3:
+      "Add the architecture test that fails the build if Docaya.Domain references
+       a provider package."
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Docaya.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Docaya.Domain\Docaya.Domain.csproj" />
+    <ProjectReference Include="..\Docaya.Application\Docaya.Application.csproj" />
+    <ProjectReference Include="..\Docaya.Infrastructure\Docaya.Infrastructure.csproj" />
+    <ProjectReference Include="..\Docaya.Api\Docaya.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

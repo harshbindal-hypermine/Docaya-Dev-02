@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/document-submitted.schema.json",
+  "title": "DocumentSubmitted",
+  "description": "Raised when the Editor submits and the route and SLA are resolved. Consumers: workflow, SLA, notification. Delivery: at-least-once.",
+  "type": "object",
+  "required": ["documentId", "approvalRequestId", "reviewRouteId", "originalTargetDate"],
+  "additionalProperties": false,
+  "properties": {
+    "documentId": { "type": "string", "format": "uuid" },
+    "approvalRequestId": { "type": "string", "format": "uuid" },
+    "reviewRouteId": { "type": "string", "format": "uuid" },
+    "priority": { "type": "string", "enum": ["Normal", "Urgent"] },
+    "originalTargetDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Working-day target. Urgent 12 days, Normal 30 days, both configurable per document type (TAD 8.3)."
+    },
+    "targetLibrary": {
+      "type": ["string", "null"],
+      "description": "SharePoint library resolved by the routing rules."
+    }
+  }
+}

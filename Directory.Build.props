@@ -1,0 +1,57 @@
+<Project>
+
+  <!--
+    Docaya repository-wide MSBuild defaults.
+    Technical Architecture Document v1.3, Section 17.4 - Baseline Packages and Standards.
+    Every .NET project in src/api and src/functions inherits these settings.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- Warnings are errors: architecture drift must fail the build, not a review. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors></WarningsNotAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Deterministic, traceable builds. Section 19.3 - Release Integrity Principles. -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Docaya</Product>
+    <Company>Docaya</Company>
+    <Authors>Docaya Engineering</Authors>
+    <VersionPrefix>1.3.0</VersionPrefix>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <!-- Test projects are not packable and do not need API documentation. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!--
+      CA1707 forbids underscores in member names. Underscore-separated test names are
+      the xUnit convention and are what makes a failing test readable in CI output, so
+      the rule is suppressed for test projects only - never for shipping code.
+    -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+</Project>
