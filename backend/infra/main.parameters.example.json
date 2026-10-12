@@ -1,0 +1,60 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "uaenorth"
+    },
+    "approvedRegions": {
+      "value": ["uaenorth", "uaecentral"]
+    },
+    "releaseVersion": {
+      "value": "1.3.0"
+    },
+    "owner": {
+      "value": ""
+    },
+    "costCentre": {
+      "value": ""
+    },
+    "dataClassification": {
+      "value": "synthetic"
+    },
+    "apiImageDigest": {
+      "value": ""
+    },
+    "sqlAdminGroupObjectId": {
+      "value": ""
+    },
+    "sqlAdminGroupName": {
+      "value": ""
+    },
+    "entraTenantId": {
+      "value": ""
+    },
+    "apiAudience": {
+      "value": ""
+    },
+    "alertEmailAddress": {
+      "value": ""
+    },
+    "apiManagementPublisherEmail": {
+      "value": ""
+    },
+    "administrativeIpAllowList": {
+      "value": []
+    },
+    "notificationSenderDomain": {
+      "value": ""
+    },
+    "powerBiCapacityAdministrators": {
+      "value": []
+    },
+    "powerBiDedicatedCapacityEnabled": {
+      "value": false
+    }
+  }
+}

@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Docaya.Functions - Durable orchestrations, activities, Service Bus consumers and
+    timer triggers.
+
+    Technical Architecture Document v1.3, Section 17.1:
+      "Durable orchestrations, their activities, the Service Bus consumers and the timer
+       triggers share the same host, the same configuration and the same release cadence.
+       Splitting them into a separate deployable would add an artifact, a pipeline and a
+       version to manage with no operational benefit."
+
+    Section 17.2:
+      May reference:        Docaya.Application and Docaya.Infrastructure.
+      Must never contain:   duplicated domain logic - it invokes use cases.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Docaya.Functions</RootNamespace>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+    <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
+    <!--
+      CA1716 flags the namespace suffix "Shared" because it is a reserved Visual Basic
+      keyword. Section 17.1 names this folder explicitly, and Docaya has no Visual Basic
+      consumer, so the architecture-mandated name is kept.
+    -->
+    <NoWarn>$(NoWarn);CA1716</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\api\Docaya.Application\Docaya.Application.csproj" />
+    <ProjectReference Include="..\api\Docaya.Infrastructure\Docaya.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    The test project lives in Tests/ per Section 17.1. Exclude it from this project's
+    default compile glob so the worker host does not absorb its sources.
+  -->
+  <ItemGroup>
+    <Compile Remove="Tests\**" />
+    <None Remove="Tests\**" />
+    <EmbeddedResource Remove="Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- local.settings.json is git-ignored and never published (TAD 17.6). -->
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

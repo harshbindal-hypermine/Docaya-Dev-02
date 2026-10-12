@@ -1,0 +1,2075 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Docaya API",
+    "version": "1.3.0",
+    "summary": "Governed document lifecycle API for the Docaya Enterprise EDMS.",
+    "description": "Contract-first REST surface for Docaya.\n\nAuthoritative source: Docaya Technical Architecture Document v1.3,\nSection 24.1 (API Standards) and Section 24.2 (Representative Endpoints).\n\nBinding rules carried from the architecture baseline:\n\n* **Contract first.** This document is authored in `src/contracts` and published\n  before implementation. The TypeScript and C# clients are generated from it;\n  generated output is never hand-edited.\n* **Versioning.** URI major version under `/api/v1`. Only additive change is\n  permitted within a version; a breaking change requires a new major version\n  and an overlap period.\n* **Authorization.** Policy is applied before any store is touched. Deny by\n  default. The decision is logged with the policy version.\n* **Idempotency.** Every write accepts or derives an idempotency key. A\n  duplicate request returns the original result rather than repeating the effect.\n* **Correlation.** W3C trace context flows from the browser through the API,\n  the queue, the worker and into the hash-chained audit record.\n* **Pagination.** Cursor-based with deterministic ordering. Total counts are not\n  returned where they would leak corpus size.\n* **Errors.** A single problem-detail envelope. Internal exception text and\n  stack traces are never returned.\n\nExcluded by design (TAD 7.2, non-negotiable lifecycle controls): no AI\nclassification or approver suggestion at capture, registration or classification;\nno file-format conversion at any step; no publication before final approval; no\nindex entry, embedding, answer or thumbnail exposure for unapproved content.\n",
+    "contact": {
+      "name": "Docaya Engineering"
+    },
+    "license": {
+      "name": "OFFICIAL - Internal"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{host}/api/v1",
+      "description": "Docaya API, major version 1.",
+      "variables": {
+        "host": {
+          "default": "localhost:5001"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Liveness and readiness probes."
+    },
+    {
+      "name": "Documents",
+      "description": "M1/M2 capture, registration and classification within the staging zone."
+    },
+    {
+      "name": "Reviews",
+      "description": "M3 configurable review chain, decisions and working-day SLA."
+    },
+    {
+      "name": "Revisions",
+      "description": "M14 A New Revision against an approved version."
+    },
+    {
+      "name": "Discovery",
+      "description": "M10 Ask Docaya - Quick Search, Browse and cited AI answering."
+    },
+    {
+      "name": "Analytics",
+      "description": "M15 Power BI embedded reporting."
+    },
+    {
+      "name": "Administration",
+      "description": "Review chain configuration and reference data."
+    }
+  ],
+  "security": [
+    {
+      "entraBearer": []
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Liveness probe.",
+        "description": "Returns success when the process is running. Performs no dependency checks.",
+        "operationId": "getHealthLive",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The process is live.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Readiness probe.",
+        "description": "Returns success only when every required downstream dependency is reachable.",
+        "operationId": "getHealthReady",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The service is ready to accept traffic.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A required dependency is unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Create the registry row and open an upload session.",
+        "description": "Issues the tracking number `DOC-YYYY-NNNNNN`, creates the staging registry\nrow and opens a resumable upload session for exactly one file of at most\n100 MB (TAD 7.1 step 1).\n\nAuthorization: Editor role plus department scope.\n",
+        "operationId": "createDocument",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registry row created and upload session opened.",
+            "headers": {
+              "Location": {
+                "description": "Canonical URI of the created document.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "List documents visible to the caller.",
+        "description": "Cursor-based with deterministic ordering. Results are permission-trimmed:\nunauthorised items are removed, not masked (TAD 6.2).\n",
+        "operationId": "listDocuments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by lifecycle status.",
+            "schema": {
+              "$ref": "#/components/schemas/DocumentStatus"
+            }
+          },
+          {
+            "name": "departmentId",
+            "in": "query",
+            "description": "Filter by owning department.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A permission-trimmed page of documents.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Read a single document.",
+        "operationId": "getDocument",
+        "responses": {
+          "200": {
+            "description": "The document as visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/documents/{id}/chunks": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Upload a chunk of the single file.",
+        "description": "Resumable chunked upload of one file, 100 MB maximum in total. The byte\nstream is written to staging unchanged; SHA-256 is computed across the\nassembled file and the malware and DLP gate runs before the document may\nleave `PendingRegistration` (TAD 7.1 step 1).\n\nAuthorization: owner of the draft.\n",
+        "operationId": "uploadDocumentChunk",
+        "parameters": [
+          {
+            "name": "Content-Range",
+            "in": "header",
+            "required": true,
+            "description": "Byte range of this chunk, for example `bytes 0-1048575/5242880`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^bytes \\d+-\\d+/\\d+$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Final chunk accepted; the staged file is complete and hashed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StagedFile"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Chunk accepted; more chunks expected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/documents/{id}/registration": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Set user-entered registration fields.",
+        "description": "Technical attributes are pre-filled by the system. The Editor supplies\nbusiness title, description, keywords and references (TAD 7.1 step 2).\n\nAuthorization: owner of the draft.\n",
+        "operationId": "updateDocumentRegistration",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration fields recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/documents/{id}/classification": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Set class, sensitivity, department, Standard, tags, scope and route.",
+        "description": "Classification is entirely manual and Editor-driven. No AI suggestion is\noffered at any point (TAD 7.1 step 3, and the v1.2 reconciliation register).\n\nAuthorization: owner of the draft.\n",
+        "operationId": "setDocumentClassification",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Classification recorded; the document is Classified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/documents/{id}/submit": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Validate, resolve the route and start the SLA.",
+        "description": "Metadata is validated against the active type schema, routing rules resolve\nthe target SharePoint library and the review chain, and the working-day SLA\nclock starts (TAD 7.1 step 4).\n\nAuthorization: owner of the draft.\n",
+        "operationId": "submitDocument",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Submitted; the document is PendingApproval and the SLA has started.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/documents/{id}/timeline": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Unified decision, comment, SLA and version history.",
+        "description": "Authorization: read on the document.",
+        "operationId": "getDocumentTimeline",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document timeline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelinePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/documents/{id}/versions/{version}/thumbnail": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "description": "Version number of the document.",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Permission-checked thumbnail for a specific version.",
+        "description": "A thumbnail is captured at registration and at every approved revision, is\nretained per version, and is permission-trimmed exactly as the document is.\nNo thumbnail is exposed for unapproved content (TAD 7.2).\n\nAuthorization: read on that version.\n",
+        "operationId": "getDocumentVersionThumbnail",
+        "responses": {
+          "200": {
+            "description": "The thumbnail image.",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/documents/{id}/revisions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/DocumentId"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Revisions"
+        ],
+        "summary": "Submit a New Revision against the approved version.",
+        "description": "M14 is *A New Revision*; the on-screen action is \"Submit a New Revision\".\nThe terms modification, change request and amendment are not used.\n\nAuthorization: Editor plus read on the approved version.\n",
+        "operationId": "createDocumentRevision",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRevisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Revision draft created with its own upload session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/reviews/{stageId}/decision": {
+      "parameters": [
+        {
+          "name": "stageId",
+          "in": "path",
+          "required": true,
+          "description": "Identifier of the review stage instance.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Approve or return with a mandatory comment and correction point.",
+        "description": "A return is never a restart. The returning stage records a mandatory threaded\ncomment and selects the correction point - the Editor, or the immediately\npreceding stage. The item re-enters the chain at that point, preserving the\ndecision history and the elapsed SLA (TAD 8.4).\n\nAuthorization: the assigned principal of the ACTIVE stage only.\n",
+        "operationId": "recordReviewDecision",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded and the chain advanced or returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/requests/{id}/extension": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifier of the approval request.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Record an authorised target extension with reason.",
+        "description": "Only Assurance or Authoriser may extend. A reason is mandatory. The original\ntarget is never overwritten - both dates persist for reporting (TAD 8.3).\n\nAuthorization: Assurance or Authoriser.\n",
+        "operationId": "grantSlaExtension",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlaExtensionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Extension recorded; original and revised targets both persist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Permission-trimmed Quick Search and Browse.",
+        "description": "Results are trimmed against the caller's security keys before serialisation.\nOnly approved and published content is indexed and therefore discoverable.\n\nAuthorization: authenticated plus trimmed.\n",
+        "operationId": "search",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A permission-trimmed result page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/ask": {
+      "post": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Ask Docaya cited answer over approved content only.",
+        "description": "Answering is grounded and citation-bound: every answer cites the published\nrecords it was derived from, and unapproved content is never embedded,\nindexed or answered over.\n\nThis capability sits behind a configuration feature flag so V1 can ship with\nQuick Search and Browse while answering is deferred pending POC outcomes\n(TAD 6.3).\n\nAuthorization: authenticated plus trimmed.\n",
+        "operationId": "ask",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A cited answer grounded in permission-trimmed published records.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "description": "Answering is disabled by feature flag in this environment.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/embed": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Power BI embed configuration with effective identity.",
+        "description": "Authorization: report consumer role.",
+        "operationId": "getAnalyticsEmbedConfiguration",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Embed configuration scoped to the caller's effective identity.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsEmbedConfiguration"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/routes": {
+      "get": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Read the configured review chains.",
+        "description": "The review chain is configuration, not code. Changing a route is a\nconfiguration action and never an engineering change (TAD 8.1).\n\nAuthorization: Administrator.\n",
+        "operationId": "listReviewRoutes",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The configured review chains.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewRoutePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "entraBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "OAuth 2.0 bearer token issued by Microsoft Entra ID, validated at API\nManagement and again at the API: issuer, audience, signature, expiry and\nrequired scope. The user token stops at the Docaya API and is never\nforwarded to SharePoint or any downstream resource - a governed service\nidentity performs all content operations (TAD 14.1, 14.6.1).\n"
+      }
+    },
+    "parameters": {
+      "DocumentId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Document identifier.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Client-supplied idempotency key. If omitted the API derives one. A duplicate\nrequest returns the original result rather than repeating the effect\n(TAD 24.1).\n",
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "description": "Opaque cursor returned by the previous page. Ordering is deterministic.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "required": false,
+        "description": "Maximum items to return.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "The request failed validation.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "The bearer token is missing, malformed or expired.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authorization denied. The data call was never issued and the decision was\nlogged with the policy version (TAD 6.2).\n",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The resource does not exist or is not visible to the caller.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The requested state transition is not legal from the current state.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "The file exceeds the 100 MB single-file capture limit.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "The request was well formed but violates a domain invariant.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded for this product, key or user.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ProblemDetails": {
+        "type": "object",
+        "description": "The single problem-detail envelope used by every endpoint. It carries a\nmachine-readable code, a human-readable message, field-level validation\ndetail and the correlation ID. Internal exception text and stack traces are\nnever returned.\n",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "correlationId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "URI reference identifying the problem type."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, human-readable summary."
+          },
+          "status": {
+            "type": "integer",
+            "description": "HTTP status code."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable explanation, safe for display."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "examples": [
+              "document.transition.illegal",
+              "upload.size.exceeded"
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "description": "W3C trace correlation identifier for this request."
+          },
+          "errors": {
+            "type": "array",
+            "description": "Field-level validation detail.",
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "degraded",
+              "unhealthy"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "status"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "healthy",
+                    "degraded",
+                    "unhealthy"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "DocumentStatus": {
+        "type": "string",
+        "description": "Allowed lifecycle states. Any transition not defined by the domain state\nmachine is rejected and logged (TAD 7.2).\n",
+        "enum": [
+          "PendingRegistration",
+          "Classified",
+          "PendingApproval",
+          "InReview",
+          "Returned",
+          "Approved",
+          "Published",
+          "Superseded",
+          "Expiring",
+          "Archived",
+          "Disposed"
+        ]
+      },
+      "Sensitivity": {
+        "type": "string",
+        "description": "Sensitivity classification. Publication always requires completion of the\nconfigured final approval stage - there is no auto-approval for Public.\n",
+        "enum": [
+          "Public",
+          "Internal",
+          "Confidential",
+          "Secret"
+        ]
+      },
+      "Priority": {
+        "type": "string",
+        "description": "Drives the working-day SLA target - Urgent 12 days, Normal 30 days.",
+        "enum": [
+          "Normal",
+          "Urgent"
+        ]
+      },
+      "PublishingScope": {
+        "type": "string",
+        "description": "Classification dimension driving navigation, visibility and notification reach.",
+        "enum": [
+          "Department",
+          "CrossDepartment",
+          "Organisation"
+        ]
+      },
+      "Document": {
+        "type": "object",
+        "required": [
+          "id",
+          "trackingNumber",
+          "status",
+          "version",
+          "createdAtUtc"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "description": "Issued at capture.",
+            "pattern": "^DOC-\\d{4}-\\d{6}$"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "stagedFile": {
+            "$ref": "#/components/schemas/StagedFile"
+          },
+          "publishedLocation": {
+            "$ref": "#/components/schemas/PublishedLocation"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DocumentPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor for the next page, or null when this page is the last."
+          }
+        }
+      },
+      "Classification": {
+        "type": "object",
+        "description": "Set manually by the Editor. No AI suggestion is offered at any point\n(TAD 7.1 step 3).\n",
+        "required": [
+          "documentClassId",
+          "sensitivity",
+          "owningDepartmentId",
+          "publishingScope"
+        ],
+        "properties": {
+          "documentClassId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sensitivity": {
+            "$ref": "#/components/schemas/Sensitivity"
+          },
+          "owningDepartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "standardId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "departmentTag": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Classification dimension driving navigation and notification reach."
+          },
+          "publishingScope": {
+            "$ref": "#/components/schemas/PublishingScope"
+          },
+          "accessScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewRouteId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "StagedFile": {
+        "type": "object",
+        "required": [
+          "fileName",
+          "sizeBytes",
+          "sha256"
+        ],
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "maximum": 104857600,
+            "description": "Single-file capture limit is 100 MB (104857600 bytes)."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Computed over the unchanged staged byte stream. The published hash must\nequal the staged hash or the promotion is quarantined (TAD 7.2).\n"
+          },
+          "scanStatus": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Clean",
+              "Quarantined"
+            ]
+          },
+          "thumbnailAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PublishedLocation": {
+        "type": "object",
+        "description": "Written back after promotion through Microsoft Graph (TAD 7.1 step 7).",
+        "properties": {
+          "siteId": {
+            "type": "string"
+          },
+          "driveId": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sharePointVersion": {
+            "type": "string"
+          },
+          "publishedSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "UploadSession": {
+        "type": "object",
+        "required": [
+          "documentId",
+          "uploadId",
+          "maxBytes"
+        ],
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadId": {
+            "type": "string"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "pattern": "^DOC-\\d{4}-\\d{6}$"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "format": "int64",
+            "const": 104857600
+          },
+          "receivedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateDocumentRequest": {
+        "type": "object",
+        "required": [
+          "fileName",
+          "sizeBytes"
+        ],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 104857600
+          }
+        }
+      },
+      "RegistrationRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ClassificationRequest": {
+        "$ref": "#/components/schemas/Classification"
+      },
+      "SubmitDocumentRequest": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string",
+            "description": "Optional submission note recorded on the timeline."
+          }
+        }
+      },
+      "CreateRevisionRequest": {
+        "type": "object",
+        "required": [
+          "reason",
+          "fileName",
+          "sizeBytes"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Mandatory justification for the new revision."
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 104857600
+          }
+        }
+      },
+      "ReviewDecisionType": {
+        "type": "string",
+        "enum": [
+          "Approve",
+          "Return"
+        ]
+      },
+      "CorrectionPoint": {
+        "type": "string",
+        "description": "Where a returned item re-enters the chain. A return is never a restart\n(TAD 8.4).\n",
+        "enum": [
+          "Editor",
+          "PrecedingStage"
+        ]
+      },
+      "ReviewDecisionRequest": {
+        "type": "object",
+        "required": [
+          "decision",
+          "comment"
+        ],
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ReviewDecisionType"
+          },
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Mandatory threaded comment, required for both approve and return."
+          },
+          "correctionPoint": {
+            "$ref": "#/components/schemas/CorrectionPoint"
+          }
+        }
+      },
+      "ReviewStage": {
+        "type": "object",
+        "required": [
+          "stageId",
+          "ordinal",
+          "name",
+          "state"
+        ],
+        "properties": {
+          "stageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Editor",
+              "Document Owner",
+              "Assurance",
+              "Authoriser"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Active",
+              "Approved",
+              "Returned",
+              "Skipped"
+            ]
+          },
+          "assignedPrincipalId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "routingPattern": {
+            "type": "string",
+            "enum": [
+              "Sequential",
+              "Parallel",
+              "Conditional",
+              "Delegation"
+            ]
+          },
+          "enteredAtUtc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completedAtUtc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "durationWorkingDays": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Time held at this stage, so delay is attributed to a stage."
+          }
+        }
+      },
+      "SlaState": {
+        "type": "string",
+        "enum": [
+          "OnTrack",
+          "AtRisk",
+          "Overdue"
+        ]
+      },
+      "ApprovalRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "documentId",
+          "slaState",
+          "remainingWorkingDays"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewStage"
+            }
+          },
+          "slaState": {
+            "$ref": "#/components/schemas/SlaState"
+          },
+          "remainingWorkingDays": {
+            "type": "integer",
+            "description": "Recomputed on each calendar or target change. Weekends and UAE public\nholidays are excluded (TAD 8.3).\n"
+          },
+          "originalTargetDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Never overwritten, even after an authorised extension."
+          },
+          "currentTargetDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "SlaExtensionRequest": {
+        "type": "object",
+        "required": [
+          "newTargetDate",
+          "reason"
+        ],
+        "properties": {
+          "newTargetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Mandatory. Recorded for reporting alongside the original target."
+          }
+        }
+      },
+      "TimelineEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "occurredAtUtc",
+          "kind",
+          "actor"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Registered",
+              "Classified",
+              "Submitted",
+              "Decision",
+              "Comment",
+              "SlaChanged",
+              "Extension",
+              "Published",
+              "Revision"
+            ]
+          },
+          "actor": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "stageName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TimelinePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ReviewRoute": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "stages"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "documentClassId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "departmentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "stages": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 4,
+            "description": "A named, ordered sequence of three or four stages (TAD 8.1).",
+            "items": {
+              "$ref": "#/components/schemas/ReviewStage"
+            }
+          }
+        }
+      },
+      "ReviewRoutePage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewRoute"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ar"
+            ],
+            "description": "Drives bilingual analysis and ranking (TAD 12.3)."
+          }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "required": [
+          "documentId",
+          "trackingNumber",
+          "title",
+          "version"
+        ],
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri-reference"
+          },
+          "score": {
+            "type": "number"
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AskRequest": {
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ar"
+            ]
+          }
+        }
+      },
+      "Citation": {
+        "type": "object",
+        "required": [
+          "documentId",
+          "trackingNumber",
+          "version"
+        ],
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "webUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        }
+      },
+      "AskResponse": {
+        "type": "object",
+        "required": [
+          "answer",
+          "citations"
+        ],
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "citations": {
+            "type": "array",
+            "minItems": 1,
+            "description": "An answer is always citation-bound. An answer that cannot be grounded in\npermission-trimmed published records is not returned.\n",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            }
+          }
+        }
+      },
+      "AnalyticsEmbedConfiguration": {
+        "type": "object",
+        "required": [
+          "embedUrl",
+          "reportId",
+          "expiresAtUtc"
+        ],
+        "properties": {
+          "embedUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "reportId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "description": "Short-lived embed token scoped to the caller's effective identity."
+          },
+          "expiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

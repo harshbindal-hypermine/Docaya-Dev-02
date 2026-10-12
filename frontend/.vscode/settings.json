@@ -1,0 +1,36 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "/^node --version; npm --version$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^npm run build$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "az": true,
+    "npm test": true,
+    "git add": true,
+    "npm run typecheck": true,
+    "npm run test:unit": true,
+    "/^git show HEAD:server/services/azure-search\\.mjs \\| Select-Object -First 25; node --check server/services/azure-search\\.mjs$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "git pull": true,
+    "git stash": true,
+    "/^node -e \"JSON\\.parse\\(require\\('fs'\\)\\.readFileSync\\('\\.vscode/settings\\.json','utf8'\\)\\); console\\.log\\('settings\\.json OK'\\)\"; git status --short$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  },
+  "chat.agentSkillsLocations": {
+    ".agents/skills": true,
+    ".github/skills": true,
+    ".claude/skills": true,
+    "~/.agents/skills": true,
+    "~/.copilot/skills": true,
+    "~/.claude/skills": true,
+    "~/.vscode/extensions/synapsevscode.synapse-1.25.0/copilot/skills": true
+  }
+}

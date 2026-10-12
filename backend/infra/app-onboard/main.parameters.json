@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "docaya-dev-09e7" },
+    "location": { "value": "eastus" },
+    "resourceGroupName": { "value": "rg-hmai-docayapoc-hp05" },
+    "sessionId": { "value": "09e72593-2957-4f1a-ad30-7759a1b35d9b" },
+    "deployedBy": { "value": "Harsh Bindal" },
+    "createdAt": { "value": "2026-09-30T08:43:59.9708278Z" },
+    "tenantId": { "value": "3de5f558-43c4-4d72-831e-0de3ffb84f89" },
+    "entraAdminObjectId": { "value": "59ce109c-003a-453a-8e48-cf10e1820395" },
+    "entraAdminName": { "value": "Harsh Bindal" },
+    "entraAdminType": { "value": "User" }
+  }
+}

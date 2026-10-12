@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "docaya-dev-09e7"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "sessionId": {
+      "value": "09e72593-2957-4f1a-ad30-7759a1b35d9b"
+    },
+    "deployedBy": {
+      "value": "Harsh Bindal"
+    },
+    "createdAt": {
+      "value": "2026-10-04T00:00:00Z"
+    },
+    "tenantId": {
+      "value": "f630cfa4-d830-4701-b631-2df4850e8cb0"
+    },
+    "entraAdminObjectId": {
+      "value": "1dc64d99-67ee-435c-8d40-326ff84acf7d"
+    },
+    "entraAdminName": {
+      "value": "Harsh Bindal"
+    },
+    "entraAdminType": {
+      "value": "User"
+    },
+    "apiContainerImage": {
+      "value": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+    },
+    "existingStorageAccountName": {
+      "value": "stdocayadev09e7"
+    },
+    "existingStaticWebAppDefaultHostname": {
+      "value": "yellow-island-0fec9a10f.6.azurestaticapps.net"
+    }
+  }
+}

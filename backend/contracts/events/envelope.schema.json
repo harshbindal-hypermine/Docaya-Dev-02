@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/envelope.schema.json",
+  "title": "DocayaEventEnvelope",
+  "description": "Common envelope for every Docaya domain event. Technical Architecture Document v1.3, Section 24.3 and 24.4. Events are written through a transactional outbox: the state change and its event commit in a single SQL transaction and are dispatched afterwards, so an event can never describe a state that did not persist.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAtUtc",
+    "correlationId",
+    "idempotencyKey",
+    "data"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of this event instance."
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Fully qualified event name from the catalogue.",
+      "enum": [
+        "DocumentRegistered",
+        "DocumentSubmitted",
+        "ReviewDecisionRecorded",
+        "SlaRiskChanged",
+        "SlaExtensionGranted",
+        "FinalApprovalGranted",
+        "DocumentPublished",
+        "DocumentIndexed",
+        "RevisionApproved",
+        "AccessPolicyChanged",
+        "RetentionActionDue"
+      ]
+    },
+    "eventVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version of the data payload. Additive change only within a version."
+    },
+    "occurredAtUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the state change committed, not when the message was dispatched."
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "W3C trace correlation identifier, carried from the originating request into the audit record."
+    },
+    "causationId": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Identifier of the event or command that caused this event."
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Delivery is at-least-once and consumers are idempotent. A redelivered message produces one result, never a duplicate."
+    },
+    "sessionId": {
+      "type": ["string", "null"],
+      "description": "Set to the document identifier where ordering matters, so stage transitions for one document are processed in order (TAD 24.4)."
+    },
+    "actor": {
+      "type": ["string", "null"],
+      "description": "Principal that caused the change. Never contains document content or personal data beyond the identifier."
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific payload, validated against the matching event schema."
+    }
+  }
+}

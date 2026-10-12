@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/revision-approved.schema.json",
+  "title": "RevisionApproved",
+  "description": "Raised when a new revision passes final approval. The prior version becomes Superseded. Consumers: promotion, thumbnail, index refresh, notification. Delivery: at-least-once.",
+  "type": "object",
+  "required": ["documentId", "newVersion", "supersededVersion", "approvedByPrincipalId"],
+  "additionalProperties": false,
+  "properties": {
+    "documentId": { "type": "string", "format": "uuid" },
+    "newVersion": { "type": "integer", "minimum": 2 },
+    "supersededVersion": { "type": "integer", "minimum": 1 },
+    "approvedByPrincipalId": { "type": "string", "format": "uuid" },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Justification captured when the revision was submitted."
+    }
+  }
+}

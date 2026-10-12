@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/document-indexed.schema.json",
+  "title": "DocumentIndexed",
+  "description": "Raised when the Document Index Record is built for a version. Only approved, published content is ever indexed. Consumers: Ask Docaya readiness, audit, analytics. Delivery: at-least-once.",
+  "type": "object",
+  "required": ["documentId", "version", "indexName", "indexedAtUtc"],
+  "additionalProperties": false,
+  "properties": {
+    "documentId": { "type": "string", "format": "uuid" },
+    "version": { "type": "integer", "minimum": 1 },
+    "indexName": { "type": "string" },
+    "indexedAtUtc": { "type": "string", "format": "date-time" },
+    "aclKeys": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Permission keys used for trimming at query time (TAD 12.4)."
+    },
+    "embeddingsGenerated": {
+      "type": "boolean",
+      "description": "Embeddings are generated strictly after publication and only for approved content."
+    }
+  }
+}

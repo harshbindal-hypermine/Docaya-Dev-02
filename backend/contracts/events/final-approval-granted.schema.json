@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docaya.local/contracts/events/final-approval-granted.schema.json",
+  "title": "FinalApprovalGranted",
+  "description": "Raised when the configured final stage approves. Single consumer: the promotion worker. Delivery: exactly-once effect via ops.PromotionLedger, whose IdempotencyKey is UNIQUE - a retried promotion finds the existing row and stops (TAD 8.5).",
+  "type": "object",
+  "required": ["documentId", "approvalRequestId", "approvedByPrincipalId", "promotionIdempotencyKey"],
+  "additionalProperties": false,
+  "properties": {
+    "documentId": { "type": "string", "format": "uuid" },
+    "approvalRequestId": { "type": "string", "format": "uuid" },
+    "approvedByPrincipalId": { "type": "string", "format": "uuid" },
+    "promotionIdempotencyKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Unique key enforcing exactly-once promotion."
+    },
+    "targetSiteId": { "type": ["string", "null"] },
+    "targetDriveId": { "type": ["string", "null"] },
+    "stagedSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The published hash must equal this value or the promotion is quarantined rather than completed."
+    }
+  }
+}
