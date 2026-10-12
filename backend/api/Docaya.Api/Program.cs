@@ -99,12 +99,15 @@ builder.Services
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseMiddleware<CorrelationMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
 app.MapContractEndpoints();
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 // M1-M16 endpoint groups are mapped here as each module is implemented. Every one is
 // generated against src/contracts and applies its authorization policy before touching

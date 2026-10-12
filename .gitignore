@@ -17,6 +17,7 @@ test-results/
 bin/
 obj/
 artifacts/
+.deploy/
 *.user
 *.suo
 .vs/
