@@ -64,7 +64,13 @@ import { SearchPage, AssistantDock } from './Discovery'
 import { ApprovalQueue } from './ApprovalQueue'
 import { approvalQueue, type ApprovalView } from './approval-queue'
 import { DocayaMark, DocayaAIMark } from './BrandMarks'
-import { developmentSignIn, uploadSharePointFile } from '../services/api'
+import {
+  ApiError,
+  developmentSignIn,
+  listPrototypeDocuments,
+  registerPrototypeDocument,
+  uploadSharePointFile,
+} from '../services/api'
 import './prototype.css'
 import './experience.css'
 import './typography.css'
@@ -282,16 +288,27 @@ export default function PrototypeApp() {
   useEffect(() => {
     if (!signedIn) return
     let cancelled = false
-    developmentSignIn().catch(() => {
-      if (!cancelled) {
-        setToast(
-          t(
-            'Backend API is not available. SharePoint actions will not run until the API is started and configured.',
-            'واجهة الخادم الخلفية غير متاحة. لن تعمل إجراءات شيربوينت حتى يتم تشغيلها وتهيئتها.',
-          ),
-        )
-      }
-    })
+    developmentSignIn()
+      .catch(() => null)
+      .then(() => listPrototypeDocuments<RecordItem>())
+      .then((records) => {
+        if (cancelled || records.length === 0) return
+        setState((current) => {
+          const existing = new Set(current.documents.map((record) => record.id))
+          const fromSql = records.filter((record) => !existing.has(record.id))
+          return fromSql.length === 0 ? current : { ...current, documents: [...fromSql, ...current.documents] }
+        })
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setToast(
+            t(
+              'Backend API is not available. New documents will stay in this browser until the API is configured.',
+              'واجهة الخادم الخلفية غير متاحة. ستبقى الوثائق الجديدة في هذا المتصفح حتى يتم إعداد الواجهة.',
+            ),
+          )
+        }
+      })
     return () => {
       cancelled = true
     }
@@ -368,36 +385,50 @@ export default function PrototypeApp() {
     setState((s) => addEvent(s, next, 'Demo persona selected', 'تم اختيار دور العرض', next))
   }
   const saveRecord = (record: RecordItem) => {
-    setState((s) =>
-      addEvent(
-        {
-          ...s,
-          documents: s.documents.some((r) => r.id === record.id)
-            ? s.documents.map((r) => (r.id === record.id ? record : r))
-            : [record, ...s.documents],
-          notices: [
-            {
-              id: crypto.randomUUID(),
-              title: `${record.status === 'PendingApproval' ? 'Approval requested' : 'Registration saved'} · ${record.title}`,
-              titleAr: `تم حفظ التسجيل · ${record.titleAr || record.title}`,
-              recordId: record.id,
-              category: 'Registration',
-              read: false,
-              time: new Date().toISOString(),
-            },
-            ...s.notices,
-          ],
-        },
-        role,
-        record.status === 'PendingApproval' ? 'Registered, classified and submitted' : 'Registration saved',
-        'تم حفظ تسجيل الوثيقة',
-        record.id,
-      ),
-    )
-    setRegistration(false)
-    setPage(record.status === 'PendingApproval' ? 'workflows' : 'documents')
-    if (record.status === 'PendingApproval') resetApprovalView()
-    notify(t(`Saved ${record.id}`, `تم حفظ ${record.id}`))
+    void saveRecordToSql(record)
+  }
+  const saveRecordToSql = async (record: RecordItem) => {
+    const persistLocally = (saved: RecordItem) => {
+      setState((s) =>
+        addEvent(
+          {
+            ...s,
+            documents: s.documents.some((r) => r.id === saved.id)
+              ? s.documents.map((r) => (r.id === saved.id ? saved : r))
+              : [saved, ...s.documents],
+            notices: [
+              {
+                id: crypto.randomUUID(),
+                title: `${saved.status === 'PendingApproval' ? 'Approval requested' : 'Registration saved'} · ${saved.title}`,
+                titleAr: `تم حفظ التسجيل · ${saved.titleAr || saved.title}`,
+                recordId: saved.id,
+                category: 'Registration',
+                read: false,
+                time: new Date().toISOString(),
+              },
+              ...s.notices,
+            ],
+          },
+          role,
+          saved.status === 'PendingApproval' ? 'Registered, classified and submitted' : 'Registration saved',
+          'تم حفظ تسجيل الوثيقة',
+          saved.id,
+        ),
+      )
+      setRegistration(false)
+      setPage(saved.status === 'PendingApproval' ? 'workflows' : 'documents')
+      if (saved.status === 'PendingApproval') resetApprovalView()
+    }
+
+    try {
+      const saved = await registerPrototypeDocument<RecordItem>(record)
+      persistLocally(saved)
+      notify(t(`Saved ${saved.id} in SQL`, `تم حفظ ${saved.id} في قاعدة البيانات`))
+    } catch (problem) {
+      persistLocally(record)
+      const message = problem instanceof ApiError ? problem.message : t('SQL save failed.', 'فشل الحفظ في قاعدة البيانات.')
+      notify(t(`Saved locally only. SQL error: ${message}`, `تم الحفظ محلياً فقط. خطأ قاعدة البيانات: ${message}`))
+    }
   }
   const publishApprovedOriginal = async (record: RecordItem) => {
     if (!record.sharePointFolderId) {

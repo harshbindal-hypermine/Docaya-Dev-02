@@ -118,6 +118,18 @@ export async function registerDocument(input: RegistrationInput, submit: boolean
     })
   ).document
 }
+export async function registerPrototypeDocument<T extends Record<string, unknown>>(record: T) {
+  return (
+    await request<{ record: T }>('/documents', {
+      method: 'POST',
+      headers: { 'idempotency-key': crypto.randomUUID() },
+      body: JSON.stringify(record),
+    })
+  ).record
+}
+export async function listPrototypeDocuments<T>() {
+  return (await request<{ documents: T[] }>('/documents?limit=100')).documents
+}
 export async function listWorkflows() {
   const payload = await request<{ workflows: Array<Record<string, unknown>> }>('/workflows')
   return payload.workflows.map(mapWorkflow)
